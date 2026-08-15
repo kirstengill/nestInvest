@@ -39,6 +39,16 @@ const Signin = () => {
     <div className="auth-page">
       <div className="auth-card">
         <div className="auth-header">
+          <Link to="/" className="auth-logo">
+            <span className="auth-logo__icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                <path d="M2 17l10 5 10-5" />
+                <path d="M2 12l10 5 10-5" />
+              </svg>
+            </span>
+            <span className="auth-logo__text">nestInvest</span>
+          </Link>
           <h2 className="auth-title">Welcome back</h2>
           <p className="auth-subtitle">Sign in to your account</p>
         </div>

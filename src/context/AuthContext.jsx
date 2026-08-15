@@ -7,10 +7,14 @@ export const AuthContextProvider = ({ children }) => {
   const [session, setSession] = useState(undefined);
 
   // Sign up
-  const signUpNewUser = async (email, password) => {
-    const { data, error } = await supabase.auth.signUp({
+  const signUpNewUser = async (email, password, data) => {
+    const { error } = await supabase.auth.signUp({
       email: email.toLowerCase(),
       password: password,
+      data: {
+        display_name: data.displayName,
+        phone: data.phone,
+      },
     });
 
     if (error) {
@@ -18,7 +22,7 @@ export const AuthContextProvider = ({ children }) => {
       return { success: false, error };
     }
 
-    return { success: true, data };
+    return { success: true };
   };
 
   // Sign in

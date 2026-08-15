@@ -120,11 +120,6 @@ const Landing = () => {
             <Link to="#about" className="landing-nav__link">About</Link>
           </div>
 
-          <div className="landing-nav__actions">
-            <Link to="/signin" className="landing-nav__login">Log in</Link>
-            <Link to="/signup" className="landing-nav__cta">Get started</Link>
-          </div>
-
           <div className={`landing-nav__mobile ${mobileMenuOpen ? "landing-nav__mobile--open" : ""}`}>
             <div className="landing-nav__mobile-links">
               <Link to="#opportunities" className="landing-nav__mobile-link" onClick={() => setMobileMenuOpen(false)}>Invest</Link>
