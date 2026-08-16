@@ -84,7 +84,7 @@ const Dashboard = () => {
     loadData();
   }, [session]);
 
-  const userName = profile?.display_name || session?.user?.displayName || "User";
+  const userName = profile?.display_name || session?.user?.user_metadata?.display_name || "User";
   const totalBalance = balance?.balance ?? 0;
   const totalInvested = calculateTotalInvested(investments);
   const totalReturns = calculateTotalReturns(investments);

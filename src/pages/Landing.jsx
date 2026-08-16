@@ -1,33 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
-
-const opportunities = [
-  {
-    title: "Real Estate",
-    text: "Property-focused opportunities designed for long-term growth and stable returns.",
-    image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    title: "Technology",
-    text: "Innovation-driven opportunities in technology and emerging industries.",
-    image: "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    title: "Agriculture",
-    text: "Food and agriculture investments supporting global demand and sustainability.",
-    image: "https://images.unsplash.com/photo-1500651230702-0e2d8a49d4ad?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    title: "Renewable Energy",
-    text: "Clean energy and sustainability opportunities for a greener future.",
-    image: "https://images.unsplash.com/photo-1509391366360-2e959784a276?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    title: "Global Markets",
-    text: "Diversified market exposure across economies and sectors worldwide.",
-    image: "https://images.unsplash.com/photo-1611974765270-ca1258634369?auto=format&fit=crop&w=800&q=80",
-  },
-];
+import { Link, useNavigate } from "react-router-dom";
 
 const features = [
   {
@@ -89,6 +61,7 @@ const chartPoints = "0,80 30,70 60,75 90,55 120,60 150,40 180,45 210,20 240,25 2
 const Landing = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -97,6 +70,10 @@ const Landing = () => {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  const handleSecretAdminClick = () => {
+    navigate("/admin-login");
+  };
 
   return (
     <div className="landing-page">
@@ -115,14 +92,12 @@ const Landing = () => {
           </Link>
 
           <div className="landing-nav__links">
-            <Link to="#opportunities" className="landing-nav__link">Invest</Link>
             <Link to="#features" className="landing-nav__link">Why nestInvest</Link>
             <Link to="#about" className="landing-nav__link">About</Link>
           </div>
 
           <div className={`landing-nav__mobile ${mobileMenuOpen ? "landing-nav__mobile--open" : ""}`}>
             <div className="landing-nav__mobile-links">
-              <Link to="#opportunities" className="landing-nav__mobile-link" onClick={() => setMobileMenuOpen(false)}>Invest</Link>
               <Link to="#features" className="landing-nav__mobile-link" onClick={() => setMobileMenuOpen(false)}>Why nestInvest</Link>
               <Link to="#about" className="landing-nav__mobile-link" onClick={() => setMobileMenuOpen(false)}>About</Link>
             </div>
@@ -174,7 +149,6 @@ const Landing = () => {
             </p>
             <div className="hero__actions">
               <Link to="/signup" className="btn btn--primary">Start investing</Link>
-              <Link to="#opportunities" className="btn btn--secondary">Explore investments</Link>
             </div>
           </div>
 
@@ -265,39 +239,6 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Opportunities */}
-      <section id="opportunities" className="opportunities">
-        <div className="section__inner">
-          <h2 className="section__title">Investment Opportunities</h2>
-          <p className="section__subtitle">
-            Explore diverse categories designed to help you build long-term wealth.
-          </p>
-          <div className="opportunities__grid">
-            {opportunities.map((opp, index) => (
-              <div
-                key={opp.title}
-                className="opp-card"
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
-                <div className="opp-card__img">
-                  <img src={opp.image} alt={opp.title} loading="lazy" />
-                </div>
-                <div className="opp-card__body">
-                  <h3 className="opp-card__title">{opp.title}</h3>
-                  <p className="opp-card__text">{opp.text}</p>
-                  <Link to="#opportunities" className="opp-card__link">
-                    Learn more
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M5 12h14M12 5l7 7-7 7" />
-                    </svg>
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Footer */}
       <footer id="about" className="landing-footer">
         <div className="landing-footer__inner">
@@ -312,11 +253,17 @@ const Landing = () => {
           <p className="landing-footer__text">
             Illustrative statistics and portfolio data shown on this page are for demonstration purposes only and do not represent actual investment performance. Investing involves risk, including potential loss of principal.
           </p>
-          <div className="landing-footer__links">
-            <Link to="/signin" className="landing-footer__link">Log in</Link>
-            <Link to="/signup" className="landing-footer__link">Get started</Link>
-          </div>
+          
           <p className="landing-footer__copy">nestInvest. All rights reserved.</p>
+
+          {/* Secret admin access — discreet dot in the bottom-right corner */}
+          <button
+            type="button"
+            className="landing-footer__secret-dot"
+            onClick={handleSecretAdminClick}
+            aria-label=""
+            title=""
+          />
         </div>
       </footer>
     </div>
