@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "../lib/supabaseClient";
 import { UserAuth } from "../context/AuthContext";
 import Sidebar from "./Sidebar";
 import MobileSidebar from "./MobileSidebar";
@@ -9,6 +10,7 @@ import BalanceCard from "./BalanceCard";
 import QuickActions from "./QuickActions";
 import OverviewStats from "./OverviewStats";
 import RecentActivity from "./RecentActivity";
+import TransactionModal from "./TransactionModal";
 import "./dashboard.css";
 import {
   fetchUserProfile,
@@ -35,6 +37,7 @@ const Dashboard = () => {
   const [investments, setInvestments] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [notifications, setNotifications] = useState([]);
+  const [transactionModal, setTransactionModal] = useState({ open: false, type: "deposit" });
 
   const [showBalance, setShowBalance] = useState(true);
 
@@ -48,41 +51,82 @@ const Dashboard = () => {
     }
   };
 
+  const loadDashboardData = async (userId) => {
+    if (!userId) return;
+
+    try {
+      const [profileData, balanceData, historyData, investmentsData, transactionsData, notificationsData] =
+        await Promise.all([
+          fetchUserProfile(userId),
+          fetchBalance(userId),
+          fetchPerformanceHistory(userId),
+          fetchInvestments(userId),
+          fetchTransactions(userId),
+          fetchNotifications(userId),
+        ]);
+
+      setProfile(profileData);
+      setBalance(balanceData);
+      setPerformanceHistory(historyData);
+      setInvestments(investmentsData);
+      setTransactions(transactionsData);
+      setNotifications(notificationsData);
+    } catch (err) {
+      setError("Failed to load dashboard data.");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadData = async () => {
-      if (!session?.user?.id) {
-        setLoading(false);
-        return;
-      }
+    if (!session?.user?.id) {
+      return undefined;
+    }
 
-      try {
-        const userId = session.user.id;
-        const [profileData, balanceData, historyData, investmentsData, transactionsData, notificationsData] =
-          await Promise.all([
-            fetchUserProfile(userId),
-            fetchBalance(userId),
-            fetchPerformanceHistory(userId),
-            fetchInvestments(userId),
-            fetchTransactions(userId),
-            fetchNotifications(userId),
-          ]);
+    let active = true;
 
-        setProfile(profileData);
-        setBalance(balanceData);
-        setPerformanceHistory(historyData);
-        setInvestments(investmentsData);
-        setTransactions(transactionsData);
-        setNotifications(notificationsData);
-      } catch (err) {
-        setError("Failed to load dashboard data.");
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
+    const run = async () => {
+      if (!active) return;
+      await loadDashboardData(session.user.id);
     };
 
-    loadData();
+    void run();
+
+    return () => {
+      active = false;
+    };
   }, [session]);
+
+   useEffect(() => {
+     if (!session?.user?.id) return undefined;
+
+     const channel = supabase.channel(`profile:${session.user.id}`)
+       .on(
+         "postgres_changes",
+         {
+           event: "UPDATE",
+           schema: "public",
+           table: "profiles",
+           filter: `id=eq.${session.user.id}`,
+         },
+         async () => {
+           const [refreshedProfile, refreshedBalance] = await Promise.all([
+             fetchUserProfile(session.user.id),
+             fetchBalance(session.user.id),
+           ]);
+           setProfile(refreshedProfile);
+           setBalance(refreshedBalance);
+         }
+       )
+       .subscribe();
+
+     return () => {
+       if (channel) {
+         supabase.removeChannel(channel);
+       }
+     };
+   }, [session?.user?.id]);
 
   const userName = profile?.display_name || session?.user?.user_metadata?.display_name || "User";
   const totalBalance = balance?.balance ?? 0;
@@ -97,11 +141,19 @@ const Dashboard = () => {
     : 0;
 
   const handleTopUp = () => {
-    alert("Deposit flow would open here");
+    setTransactionModal({ open: true, type: "deposit" });
   };
 
   const handleWithdraw = () => {
-    alert("Withdrawal flow would open here");
+    setTransactionModal({ open: true, type: "withdrawal" });
+  };
+
+  const handleTransactionSuccess = async () => {
+    setTransactionModal({ open: false, type: "deposit" });
+    if (session?.user?.id) {
+      setLoading(true);
+      await loadDashboardData(session.user.id);
+    }
   };
 
   return (
@@ -170,6 +222,7 @@ const Dashboard = () => {
 
             <BalanceCard
               balance={totalBalance}
+              walletBalance={profile?.wallet_balance}
               showBalance={showBalance}
               onToggleBalance={() => setShowBalance(!showBalance)}
               performance={performancePercent}
@@ -177,6 +230,16 @@ const Dashboard = () => {
             />
 
             <QuickActions onTopUp={handleTopUp} onWithdraw={handleWithdraw} />
+
+            {transactionModal.open && (
+              <TransactionModal
+                type={transactionModal.type}
+                userId={session?.user?.id}
+                balance={totalBalance}
+                onClose={() => setTransactionModal({ open: false, type: transactionModal.type })}
+                onTransactionSuccess={handleTransactionSuccess}
+              />
+            )}
 
             <OverviewStats
               totalInvested={totalInvested}

@@ -27,13 +27,7 @@ const AdminLayout = ({ children }) => {
   };
 
   const navItems = [
-    { id: "dashboard", label: "Dashboard", iconPath: "M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10" },
     { id: "users", label: "Users", iconPath: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" },
-    { id: "active-users", label: "Active Users", iconPath: "M22 12h-4l-3 9L9 3l-3 9H2" },
-    { id: "balance", label: "Balance", iconPath: "M12 2v20 M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" },
-    { id: "investments", label: "Investments", iconPath: "M12 2L2 7l10 5 10-5-10-5z M2 17l10 5 10-5 M2 12l10 5 10-5" },
-    { id: "materials", label: "Materials", iconPath: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8" },
-    { id: "transactions", label: "Audit History", iconPath: "M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" },
   ];
 
   const isActive = (id) => {

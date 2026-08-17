@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-const ADMIN_USERNAME = "Byte";
-const ADMIN_PASSWORD = "Byte";
+const ADMIN_USERNAME = "byte";
+const ADMIN_PASSWORD = "byte";
 
 const AdminLogin = () => {
   const [username, setUsername] = useState("");
@@ -16,7 +16,7 @@ const AdminLogin = () => {
     event.preventDefault();
     setError("");
 
-    if (username.trim() !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
+    if (username.trim().toLowerCase() !== ADMIN_USERNAME.toLowerCase() || password !== ADMIN_PASSWORD) {
       setError("Invalid admin credentials. Please try again.");
       return;
     }

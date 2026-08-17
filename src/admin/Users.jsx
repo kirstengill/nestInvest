@@ -1,23 +1,18 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
 import AdminLayout from "./AdminLayout";
 import { fetchAllUsers, formatCurrency } from "./services/adminData";
-import { adminSetUserRole } from "./services/adminActions";
+import { adminSetWalletBalance } from "./services/adminActions";
 import "./admin.css";
 
 const UsersManagement = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("all");
-  const [updatingId, setUpdatingId] = useState(null);
-  const [selectedUser, setSelectedUser] = useState(null);
-
-  async function loadUsers() {
-    const data = await fetchAllUsers();
-    setUsers(data);
-    setLoading(false);
-  }
+  const [editingUser, setEditingUser] = useState(null);
+  const [newAmount, setNewAmount] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const initialLoad = async () => {
@@ -25,55 +20,93 @@ const UsersManagement = () => {
       setUsers(data);
       setLoading(false);
     };
+
     initialLoad();
   }, []);
 
-  const handleToggleAdmin = async (userId, currentStatus) => {
-    setUpdatingId(userId);
+  const handleOpenEdit = (user) => {
+    setEditingUser(user);
+    setNewAmount(String(Number(user.balance) || 0));
+    setNotice("");
+    setError("");
+  };
+
+  const handleSaveAmount = async (e) => {
+    e.preventDefault();
+
+    if (!editingUser) return;
+
+    const numericAmount = Number(newAmount);
+    if (!Number.isFinite(numericAmount) || numericAmount < 0) {
+      setError("Please enter a valid non-negative amount.");
+      return;
+    }
+
+    const currentBalance = Number(editingUser.balance) || 0;
+    if (numericAmount === currentBalance) {
+      setError("New amount is the same as current balance. No change needed.");
+      return;
+    }
+
     try {
-      await adminSetUserRole(userId, !currentStatus);
-      await loadUsers();
+      setSaving(true);
+      setError("");
+      setNotice("");
+
+      const reason = `Admin balance update from ${formatCurrency(currentBalance, "UGX")} to ${formatCurrency(numericAmount, "UGX")}`;
+
+      await adminSetWalletBalance(editingUser.id, numericAmount, reason);
+
+      const refreshed = await fetchAllUsers();
+      setUsers(refreshed);
+      setEditingUser(null);
+      setNotice(`Balance updated successfully for ${editingUser.display_name}. New balance: ${formatCurrency(numericAmount, "UGX")}`);
     } catch (err) {
-      console.error(err);
+      console.error("Balance update error:", err);
+      setError(err?.message || "Unable to update balance. Please try again.");
     } finally {
-      setUpdatingId(null);
+      setSaving(false);
     }
   };
 
-  const filtered = users.filter((u) => {
-    const matchesSearch = (u.display_name || "").toLowerCase().includes(search.toLowerCase()) ||
-      u.email.toLowerCase().includes(search.toLowerCase());
-    const matchesFilter = filter === "all" || (filter === "admin" ? u.is_admin : !u.is_admin);
-    return matchesSearch && matchesFilter;
+  const filteredUsers = users.filter((user) => {
+    const searchText = search.toLowerCase();
+    const uid = (user.uid || user.id || "").toLowerCase();
+    const name = (user.display_name || "").toLowerCase();
+    const phone = (user.phone || "").toLowerCase();
+    return uid.includes(searchText) || name.includes(searchText) || phone.includes(searchText);
   });
 
   return (
     <AdminLayout activeNav="users">
       <h1 className="admin-page-title">User Management</h1>
-      <p className="admin-page-subtitle">View and manage registered users</p>
+      <p className="admin-page-subtitle">View all registered users and manage their wallet balance.</p>
+
+      {notice && (
+        <div className="admin-success" style={{ marginBottom: "16px" }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+            <polyline points="22 4 12 14.01 9 11.01" />
+          </svg>
+          {notice}
+        </div>
+      )}
 
       <div className="admin-table-container">
         <div className="admin-table-header">
-          <h2 className="admin-table-title">All Users ({filtered.length})</h2>
-          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-            <div className="admin-filters">
-              <button className={`admin-filter-btn ${filter === "all" ? "admin-filter-btn--active" : ""}`} onClick={() => setFilter("all")}>All</button>
-              <button className={`admin-filter-btn ${filter === "admin" ? "admin-filter-btn--active" : ""}`} onClick={() => setFilter("admin")}>Admins</button>
-              <button className={`admin-filter-btn ${filter === "user" ? "admin-filter-btn--active" : ""}`} onClick={() => setFilter("user")}>Users</button>
-            </div>
-            <div className="admin-table-search">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="11" cy="11" r="7" />
-                <path d="m20 20-3.5-3.5" />
-              </svg>
-              <input
-                type="search"
-                placeholder="Search users..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                aria-label="Search users"
-              />
-            </div>
+          <h2 className="admin-table-title">All Users ({filteredUsers.length})</h2>
+          <div className="admin-table-search">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by UUID, name, or phone"
+              aria-label="Search users"
+            />
           </div>
         </div>
 
@@ -82,68 +115,45 @@ const UsersManagement = () => {
             <div className="admin-loading__spinner" style={{ marginBottom: "12px" }}></div>
             <p>Loading users...</p>
           </div>
-        ) : filtered.length === 0 ? (
+        ) : filteredUsers.length === 0 ? (
           <div className="admin-empty">
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="11" cy="11" r="8" />
               <path d="m21 21-4.3-4.3" />
             </svg>
             <p>No users found</p>
-            <span>Try adjusting your search or filter</span>
+            <span>Try a different search value.</span>
           </div>
         ) : (
           <div style={{ overflowX: "auto" }}>
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>User</th>
-                  <th>Balance</th>
-                  <th>Investments</th>
-                  <th>Status</th>
-                  <th>Joined</th>
-                  <th>Actions</th>
+                  <th>UUID</th>
+                  <th>Display Name</th>
+                  <th>Phone</th>
+                  <th>Wallet Balance</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((user) => (
+                {filteredUsers.map((user) => (
                   <tr key={user.id}>
-                    <td>
-                      <div>
-                        <div className="admin-table__name">{user.display_name}</div>
-                        <div className="admin-table__email">{user.email}</div>
-                      </div>
+                    <td style={{ fontFamily: "monospace", fontSize: "12px" }}>
+                      {(user.uid || user.id || "").slice(0, 12)}...
                     </td>
-                    <td>{formatCurrency(user.balance, user.currency)}</td>
-                    <td>{user.investment_count} ({formatCurrency(user.investment_total, user.currency)})</td>
-                    <td>
-                      <span className={`admin-badge ${user.is_admin ? "admin-badge--success" : "admin-badge--info"}`}>
-                        {user.is_admin ? "Admin" : "User"}
-                      </span>
-                    </td>
-                    <td style={{ whiteSpace: "nowrap" }}>
-                      {new Date(user.created_at).toLocaleDateString()}
+                    <td>{user.display_name || "Unnamed"}</td>
+                    <td>{user.phone || "—"}</td>
+                    <td style={{ color: "#10b981", fontWeight: 600 }}>
+                      {formatCurrency(user.balance, "UGX")}
                     </td>
                     <td>
-                      <div style={{ display: "flex", gap: "8px" }}>
-                        <button
-                          className="admin-btn admin-btn--secondary admin-btn--sm"
-                          onClick={() => setSelectedUser(user)}
-                        >
-                          View
-                        </button>
-                        <button
-                          className="admin-btn admin-btn--sm"
-                          style={{
-                            background: user.is_admin ? "rgba(239,68,68,0.12)" : "rgba(16,185,129,0.12)",
-                            color: user.is_admin ? "#fca5a5" : "#10b981",
-                            border: `1px solid ${user.is_admin ? "rgba(239,68,68,0.2)" : "rgba(16,185,129,0.2)"}`,
-                          }}
-                          onClick={() => handleToggleAdmin(user.id, user.is_admin)}
-                          disabled={updatingId === user.id}
-                        >
-                          {updatingId === user.id ? "..." : user.is_admin ? "Remove Admin" : "Make Admin"}
-                        </button>
-                      </div>
+                      <button
+                        className="admin-btn admin-btn--primary admin-btn--sm"
+                        onClick={() => handleOpenEdit(user)}
+                      >
+                        Edit Balance
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -153,52 +163,87 @@ const UsersManagement = () => {
         )}
       </div>
 
-      {selectedUser && (
-        <div className="admin-modal-overlay" onClick={() => setSelectedUser(null)}>
+      {editingUser && (
+        <div className="admin-modal-overlay" onClick={() => setEditingUser(null)}>
           <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
             <div className="admin-modal__header">
-              <h3 className="admin-modal__title">User Details</h3>
-              <button className="admin-modal__close" onClick={() => setSelectedUser(null)}>
+              <h3 className="admin-modal__title">Update Wallet Balance</h3>
+              <button className="admin-modal__close" onClick={() => setEditingUser(null)}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="18" y1="6" x2="6" y2="18" />
                   <line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
               </button>
             </div>
-            <div style={{ display: "grid", gap: "12px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "rgba(255,255,255,0.5)" }}>Name</span>
-                <span style={{ color: "#fff", fontWeight: 600 }}>{selectedUser.display_name}</span>
+
+            <form onSubmit={handleSaveAmount}>
+              <div style={{ display: "grid", gap: "16px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "12px", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+                  <span style={{ color: "rgba(255,255,255,0.5)" }}>Display Name</span>
+                  <span style={{ color: "#fff", fontWeight: 600 }}>{editingUser.display_name || "Unnamed"}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ color: "rgba(255,255,255,0.5)" }}>UUID</span>
+                  <span style={{ color: "#fff", fontWeight: 600, fontFamily: "monospace", fontSize: "12px" }}>
+                    {(editingUser.uid || editingUser.id || "").slice(0, 16)}...
+                  </span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ color: "rgba(255,255,255,0.5)" }}>Phone</span>
+                  <span style={{ color: "#fff", fontWeight: 600 }}>{editingUser.phone || "—"}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "12px", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+                  <span style={{ color: "rgba(255,255,255,0.5)" }}>Current Balance</span>
+                  <span style={{ color: "#10b981", fontWeight: 700, fontSize: "18px" }}>
+                    {formatCurrency(editingUser.balance, "UGX")}
+                  </span>
+                </div>
+
+                <div className="admin-form-group">
+                  <label className="admin-form-label">New Balance (UGX)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    className="admin-form-input"
+                    value={newAmount}
+                    onChange={(e) => setNewAmount(e.target.value)}
+                    placeholder="Enter new balance amount"
+                    required
+                    disabled={saving}
+                  />
+                </div>
+
+                {error && (
+                  <div className="admin-error">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="8" x2="12" y2="12" />
+                      <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                    {error}
+                  </div>
+                )}
+
+                <div className="admin-form-actions">
+                  <button
+                    type="button"
+                    className="admin-btn admin-btn--secondary"
+                    onClick={() => setEditingUser(null)}
+                    disabled={saving}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="admin-btn admin-btn--primary"
+                    disabled={saving}
+                  >
+                    {saving ? "Updating..." : "Update Balance"}
+                  </button>
+                </div>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "rgba(255,255,255,0.5)" }}>Email</span>
-                <span style={{ color: "#fff", fontWeight: 600 }}>{selectedUser.email}</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "rgba(255,255,255,0.5)" }}>Phone</span>
-                <span style={{ color: "#fff", fontWeight: 600 }}>{selectedUser.phone || "—"}</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "rgba(255,255,255,0.5)" }}>Balance</span>
-                <span style={{ color: "#10b981", fontWeight: 600 }}>{formatCurrency(selectedUser.balance, selectedUser.currency)}</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "rgba(255,255,255,0.5)" }}>Investments</span>
-                <span style={{ color: "#fff", fontWeight: 600 }}>{selectedUser.investment_count}</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "rgba(255,255,255,0.5)" }}>Joined</span>
-                <span style={{ color: "#fff", fontWeight: 600 }}>{new Date(selectedUser.created_at).toLocaleDateString()}</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "rgba(255,255,255,0.5)" }}>Last Active</span>
-                <span style={{ color: "#fff", fontWeight: 600 }}>{selectedUser.last_active ? new Date(selectedUser.last_active).toLocaleString() : "—"}</span>
-              </div>
-            </div>
-            <div className="admin-form-actions">
-              <button className="admin-btn admin-btn--secondary" onClick={() => setSelectedUser(null)}>Close</button>
-              <Link to={`/admin/balance?user=${selectedUser.id}`} className="admin-btn admin-btn--primary" onClick={() => setSelectedUser(null)}>Manage Balance</Link>
-            </div>
+            </form>
           </div>
         </div>
       )}

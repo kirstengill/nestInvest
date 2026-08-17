@@ -1,13 +1,15 @@
 import PerformanceChart from "./PerformanceChart";
 
-const BalanceCard = ({ balance, showBalance, onToggleBalance, performance, history }) => {
+const BalanceCard = ({ balance, walletBalance, showBalance, onToggleBalance, performance, history }) => {
   const formatCurrency = (value) => {
     const num = Number(value) || 0;
     return new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency: "USD",
+      currency: "UGX",
     }).format(num);
   };
+
+  const rawBalance = walletBalance ?? balance ?? 0;
 
   return (
     <div
@@ -36,7 +38,7 @@ const BalanceCard = ({ balance, showBalance, onToggleBalance, performance, histo
 
       <div className="balance-card__amount">
         {showBalance ? (
-          <span className="balance-card__value">{formatCurrency(balance)}</span>
+          <span className="balance-card__value">{formatCurrency(rawBalance)}</span>
         ) : (
           <span className="balance-card__hidden">••••••</span>
         )}

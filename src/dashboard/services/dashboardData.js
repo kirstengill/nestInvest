@@ -4,7 +4,7 @@ const formatCurrency = (value) => {
   const num = Number(value) || 0;
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "USD",
+    currency: "UGX",
   }).format(num);
 };
 
@@ -25,7 +25,7 @@ export const fetchUserProfile = async (userId) => {
   try {
     const { data, error } = await supabase
       .from("profiles")
-      .select("*")
+      .select("id, display_name, phone, wallet_balance, created_at")
       .eq("id", userId)
       .single();
 
@@ -37,19 +37,30 @@ export const fetchUserProfile = async (userId) => {
   }
 };
 
+/**
+ * Fetch user's wallet balance from profiles table
+ * This is the primary wallet balance source
+ */
 export const fetchBalance = async (userId) => {
   try {
     const { data, error } = await supabase
-      .from("wallets")
-      .select("balance, currency")
-      .eq("user_id", userId)
+      .from("profiles")
+      .select("wallet_balance")
+      .eq("id", userId)
       .single();
 
     if (error) throw error;
-    return data;
+    
+    return {
+      balance: Number(data.wallet_balance) || 0,
+      currency: "UGX",
+    };
   } catch (error) {
     console.warn("Could not fetch balance:", error.message);
-    return null;
+    return {
+      balance: 0,
+      currency: "UGX",
+    };
   }
 };
 

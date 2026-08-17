@@ -62,6 +62,15 @@ const getActivityTitle = (type) => {
   }
 };
 
+const normalizeStatus = (status) => {
+  if (!status) return "Successful";
+  const cleaned = String(status).toLowerCase();
+  if (cleaned === "completed") return "Successful";
+  if (cleaned === "pending") return "Pending";
+  if (cleaned === "failed") return "Failed";
+  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+};
+
 const RecentActivity = ({ transactions }) => {
   const [showAll, setShowAll] = useState(false);
 
@@ -115,7 +124,7 @@ const RecentActivity = ({ transactions }) => {
             </div>
             <div className="recent-activity__details">
               <span className="recent-activity__title">{getActivityTitle(tx.type)}</span>
-            <span className="recent-activity__time">{formatDate(tx.created_at)} <span className="recent-activity__status">{tx.status || "Completed"}</span></span>
+            <span className="recent-activity__time">{formatDate(tx.created_at)} <span className="recent-activity__status">{normalizeStatus(tx.status)}</span></span>
             </div>
             <span className={`recent-activity__amount ${tx.amount >= 0 ? "recent-activity__amount--positive" : "recent-activity__amount--negative"}`}>
               {tx.amount >= 0 ? "+" : ""}{formatCurrency(tx.amount)}

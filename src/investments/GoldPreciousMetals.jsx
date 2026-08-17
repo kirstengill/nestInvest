@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { UserAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
+import { fetchPreciousMetalProducts, buildMetalImage } from "./services/preciousMetals";
 import "./goldPreciousMetals.css";
 
 const formatUGX = (amount) => new Intl.NumberFormat("en-UG", { style: "currency", currency: "UGX", maximumFractionDigits: 0 }).format(amount);
@@ -22,15 +23,8 @@ const GoldPreciousMetals = () => {
     const loadProducts = async () => {
       setLoading(true);
       try {
-        const { data, error } = await supabase
-          .from("investment_products")
-          .select("*")
-          .eq("active", true)
-          .order("created_at", { ascending: true });
-
-        if (error) throw error;
-        const filteredProducts = (data || []).filter((product) => product.category?.toLowerCase() !== "silver");
-        setProducts(filteredProducts);
+        const items = await fetchPreciousMetalProducts();
+        setProducts(items);
       } catch (err) {
         console.warn("Could not load investment products:", err);
         setProducts([]);
@@ -83,7 +77,7 @@ const GoldPreciousMetals = () => {
             </div>
           ) : (
             <>
-              <div className="metals-page__grid">{visibleProducts.map((product) => <article className="metal-product-card" key={product.id}><div className="metal-product-card__image"><img src={product.image || "https://via.placeholder.com/72x108?text=Au"} alt={`${product.name} bullion`} /><span>Open</span></div><div className="metal-product-card__body"><div><p className="metal-product-card__type">{product.type}</p><h3>{product.name}</h3></div><div className="metal-product-card__facts"><span><small>Minimum</small>{formatUGX(product.minimum)}</span><span><small>Return</small>{product.return_rate}</span><span><small>Term</small>{product.duration}</span></div><button type="button" onClick={() => handleInvest(product)} disabled={checkingId === product.id}>{checkingId === product.id ? "Checking…" : "Invest"}</button></div></article>)}</div>
+              <div className="metals-page__grid">{visibleProducts.map((product) => <article className="metal-product-card" key={product.id}><div className="metal-product-card__image"><img src={product.image || buildMetalImage(product.category, product.type)} alt={`${product.name} bullion`} onError={(e) => { e.currentTarget.src = buildMetalImage(product.category, product.type); }} /><span>Open</span></div><div className="metal-product-card__body"><div><p className="metal-product-card__type">{product.type}</p><h3>{product.name}</h3></div><div className="metal-product-card__facts"><span><small>Minimum</small>{formatUGX(product.minimum)}</span><span><small>Return</small>{product.return_rate}</span><span><small>Term</small>{product.duration}</span></div><button type="button" onClick={() => handleInvest(product)} disabled={checkingId === product.id}>{checkingId === product.id ? "Checking…" : "Invest"}</button></div></article>)}</div>
               {filter === "All" && filteredProducts.length > 8 && <div className="metals-page__more"><button type="button" onClick={() => setShowAll((current) => !current)}>{showAll ? "Show Less" : `See More (${filteredProducts.length - 8} more)`}</button></div>}
             </>
           )}
